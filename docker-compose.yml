@@ -1,0 +1,95 @@
+version: '3'
+services:
+  database:
+    container_name: database
+    image: postgis/postgis:13-master
+    ports:
+      - 5432:5432
+    # Required when running on platform other than amd64, like Apple M1/M2:
+    # platform: linux/amd64
+    volumes:
+      - ./data/database:/var/lib/postgresql/data
+    networks:
+      - directus
+    environment:
+      POSTGRES_USER: 'directus'
+      POSTGRES_PASSWORD: 'directus'
+      POSTGRES_DB: 'directus'
+
+  directus:
+    container_name: directus
+    image: directus/directus:latest
+    ports:
+      - 8055:8055
+    volumes:
+      # By default, uploads are stored in /directus/uploads
+      # Always make sure your volumes matches the storage root when using
+      # local driver
+      - ./uploads:/directus/uploads
+      # Make sure to also mount the volume when using SQLite
+      # - ./database:/directus/database
+      # If you want to load extensions from the host
+      - ./extensions:/directus/extensions/
+
+
+    networks:
+      - directus
+    depends_on:
+      - database
+    environment:
+      TZ : 'Asia/Ho_Chi_Minh'
+      KEY: '255d861b-5ea1-5996-9aa3-922530ec40b1'
+      SECRET: '6116487b-cda1-52c2-b5b5-c8022c45e263'
+
+      DB_CLIENT: 'pg'
+      DB_HOST: 'database'
+      DB_PORT: '5432'
+      DB_DATABASE: 'directus'
+      DB_USER: 'directus'
+      DB_PASSWORD: 'directus'
+
+      ADMIN_EMAIL: 'admin@gmail.com'
+      ADMIN_PASSWORD: '12345678'
+      
+      ACCESS_TOKEN_TTL : '30d'
+      
+      CORS_ENABLED: 'true'
+      CORS_ORIGIN: 'true'
+      CORS_METHODS: 'GET,POST,PATCH,DELETE'
+      CORS_ALLOWED_HEADERS: 'Content-Type,Authorization'
+      CORS_EXPOSED_HEADERS: 'Content-Range'
+      CORS_CREDENTIALS: 'true'
+      CORS_MAX_AGE: 18000
+      
+      CACHE_ENABLED : 'false'
+      
+      
+      AUTH_PROVIDERS : "google"
+      
+      PUBLIC_URL : "http://onepiecenote.com:8055"
+      
+      EXTENSIONS_PATH : "./extensions/"
+      #EXTENSIONS_AUTO_RELOAD : "true"
+      
+      
+      
+      
+      REFRESH_TOKEN_COOKIE_SECURE : "false"
+      REFRESH_TOKEN_COOKIE_SAME_SITE : "lax"
+
+      AUTH_GOOGLE_DRIVER : "openid"
+      AUTH_GOOGLE_CLIENT_ID : "359374326989-075kko179esh8077viqfshq40mk7f800.apps.googleusercontent.com" # Replace XXXX with the Client ID from Step 6
+      AUTH_GOOGLE_CLIENT_SECRET : "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" # Replace XXXX with the Client Secret from Step 6
+      AUTH_GOOGLE_ISSUER_URL : "https://accounts.google.com"
+      AUTH_GOOGLE_IDENTIFIER_KEY : "email"
+      AUTH_GOOGLE_ICON : "google"
+      AUTH_GOOGLE_LABEL : "Google"
+      AUTH_GOOGLE_ALLOW_PUBLIC_REGISTRATION : "true" # This allows users to be automatically created on logins. Use "false" if you want to create users manually
+      AUTH_GOOGLE_DEFAULT_ROLE_ID : "088de733-2493-49dc-a5e6-43545345f480" # Replace this with the Directus Role ID you would want for new users. If this is not properly configured, new users will not have access to Directus
+
+      # Make sure to set this in production
+      # (see https://docs.directus.io/self-hosted/config-options#general)
+      # PUBLIC_URL: 'https://directus.example.com'
+
+networks:
+  directus:
