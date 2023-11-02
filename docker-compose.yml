@@ -1,7 +1,7 @@
 version: '3'
 services:
-  database:
-    container_name: database
+  database_aquarius:
+    container_name: database_aquarius
     image: postgis/postgis:13-master
     ports:
       - 5432:5432
@@ -10,15 +10,15 @@ services:
     volumes:
       - ./data/database:/var/lib/postgresql/data
     networks:
-      - directus
+      - directus_aquarius
     environment:
       POSTGRES_USER: 'directus'
       POSTGRES_PASSWORD: 'directus'
       POSTGRES_DB: 'directus'
 
-  directus:
-    container_name: directus
-    image: directus/directus:latest
+  directus_aquarius:
+    container_name: directus_aquarius
+    image: directus/directus:10.3.0
     ports:
       - 8055:8055
     volumes:
@@ -33,16 +33,16 @@ services:
 
 
     networks:
-      - directus
+      - directus_aquarius
     depends_on:
-      - database
+      - database_aquarius
     environment:
       TZ : 'Asia/Ho_Chi_Minh'
       KEY: '255d861b-5ea1-5996-9aa3-922530ec40b1'
       SECRET: '6116487b-cda1-52c2-b5b5-c8022c45e263'
 
       DB_CLIENT: 'pg'
-      DB_HOST: 'database'
+      DB_HOST: 'database_aquarius'
       DB_PORT: '5432'
       DB_DATABASE: 'directus'
       DB_USER: 'directus'
@@ -92,4 +92,4 @@ services:
       # PUBLIC_URL: 'https://directus.example.com'
 
 networks:
-  directus:
+  directus_aquarius:
