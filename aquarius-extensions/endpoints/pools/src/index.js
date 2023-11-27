@@ -81,11 +81,15 @@ export default (router, {
 					query = query + ' ORDER BY p.' + sort;
 				}
 			}
+			const countQuery = 'SELECT COUNT(*) AS total FROM ( ' + query + ' ) p' ;
 			query = query + ' LIMIT ' + limit;
 			query = query + ' OFFSET ' + limit * (page - 1)
 			console.log(query);
+			console.log(countQuery);
 			const result = await database.raw(query);
+			const totalResult = await database.raw(countQuery);
 			let pools = result.rows;
+			let total = totalResult.rows[0] ? totalResult.rows[0].total : 0;
 			const poolPromises = pools.map(async pool => {
 				const tickets = await ticketService.readByQuery({
 					"filter": {
@@ -132,7 +136,6 @@ export default (router, {
 				console.log(ticketSold); 
 				const adultTicket = tickets.find(ticket => ticket.ticket_type === "ADULT");
 				const totalAdultTickets = adultTicket ? adultTicket.total_ticket : 0;
-				console.log(totalAdultTickets); 
 				const images = await poolFilesService.readByQuery({
 					"filter": {
 						"pool_id": {
@@ -157,11 +160,11 @@ export default (router, {
 						return checkService(service, serviceReq);
 					});
 				});
-				console.log(check);
 				return check && pool.ticket_available > 0 ;
 			});
 			res.json({
-				"data": filteredPools
+				"data": filteredPools,
+				"total" : total
 			});
 		} catch (error) {
 			if (!error.status) {
