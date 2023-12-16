@@ -17,9 +17,8 @@ export async function vnpayReturn (req, res, services, exceptions, database, env
 
     vnp_Params = sortObject(vnp_Params);
 
-    let config = require('config');
-    let tmnCode = config.get('vnp_TmnCode');
-    let secretKey = config.get('vnp_HashSecret');
+    let tmnCode = env['vnp_TmnCode'];
+    let secretKey = env['vnp_HashSecret'];
 
     let querystring = require('qs');
     let signData = querystring.stringify(vnp_Params, { encode: false });
@@ -30,9 +29,9 @@ export async function vnpayReturn (req, res, services, exceptions, database, env
     if(secureHash === signed){
         //Kiem tra xem du lieu trong db co hop le hay khong va thong bao ket qua
 
-        res.render('success', {code: vnp_Params['vnp_ResponseCode']})
+        res.json('success', {code: vnp_Params['vnp_ResponseCode']})
     } else{
-        res.render('success', {code: '97'})
+        res.json('success', {code: '97'})
     }
     } catch (error) {
         if (!error.status) {
