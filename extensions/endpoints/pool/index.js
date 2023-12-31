@@ -1,7 +1,9 @@
-async function getListPool (req, res, services, exceptions, database){
+const PAYMENT_STATUS_FAILED$1 = '23';
+
+async function getListPool(req, res, services, exceptions, database) {
     const {
-		ItemsService
-	} = services;
+        ItemsService
+    } = services;
     console.log(database);
     try {
         let page = req.query.page;
@@ -101,9 +103,18 @@ async function getListPool (req, res, services, exceptions, database){
             });
             const orders = await orderService.readByQuery({
                 "filter": {
-                    "pool_id": {
-                        "_eq": pool.id
-                    }
+                    _and: [{
+                            "pool_id": {
+                                "_eq": pool.id
+                            }
+                        },
+                        {
+                            "order_status": {
+                                "_neq": PAYMENT_STATUS_FAILED$1
+                            }
+                        }
+                    ]
+
                 },
                 "deep": {
                     "tickets": {
@@ -172,6 +183,8 @@ function checkService(service, request) {
     return service.service_id.id == request;
 }
 
+const PAYMENT_STATUS_FAILED = '23';
+
 async function getDetailPool(req, res, services, exceptions, database) {
     const {
         ItemsService
@@ -200,7 +213,7 @@ async function getDetailPool(req, res, services, exceptions, database) {
                     "_eq": id
                 }
             },
-            "fields": ["*", "images.*", "pools.*", "services.service_id.name", "tickets.*", "pools.*","pools.images.*"]
+            "fields": ["*", "images.*", "pools.*", "services.service_id.name", "tickets.*", "pools.*", "pools.images.*"]
         });
         if (poolResult.length == 0) {
             throw new InvalidQueryException("Don't exist this pool")
@@ -208,9 +221,17 @@ async function getDetailPool(req, res, services, exceptions, database) {
         const pool = poolResult[0];
         const orders = await orderService.readByQuery({
             "filter": {
-                "pool_id": {
-                    "_eq": id
-                }
+                _and: [{
+                        "pool_id": {
+                            "_eq": id
+                        }
+                    },
+                    {
+                        "order_status": {
+                            "_neq": PAYMENT_STATUS_FAILED
+                        }
+                    }
+                ]
             },
             "deep": {
                 "tickets": {
@@ -236,7 +257,9 @@ async function getDetailPool(req, res, services, exceptions, database) {
             });
             ticketType.ticket_remain = ticketType.total_ticket - totalTicketQuantity;
         });
-        res.json(pool);
+        res.status(200).json({
+            data: pool
+        });
     } catch (error) {
         if (!error.status) {
             error.status = 503;
