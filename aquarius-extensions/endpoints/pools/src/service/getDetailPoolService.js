@@ -1,3 +1,5 @@
+const PAYMENT_STATUS_FAILED = '23'
+
 export async function getDetailPool(req, res, services, exceptions, database) {
     const {
         ItemsService
@@ -26,7 +28,7 @@ export async function getDetailPool(req, res, services, exceptions, database) {
                     "_eq": id
                 }
             },
-            "fields": ["*", "images.*", "pools.*", "services.service_id.name", "tickets.*", "pools.*","pools.images.*"]
+            "fields": ["*", "images.*", "pools.*", "services.service_id.name", "tickets.*", "pools.*", "pools.images.*"]
         });
         if (poolResult.length == 0) {
             throw new InvalidQueryException("Don't exist this pool")
@@ -34,9 +36,17 @@ export async function getDetailPool(req, res, services, exceptions, database) {
         const pool = poolResult[0];
         const orders = await orderService.readByQuery({
             "filter": {
-                "pool_id": {
-                    "_eq": id
-                }
+                _and: [{
+                        "pool_id": {
+                            "_eq": id
+                        }
+                    },
+                    {
+                        "order_status": {
+                            "_neq": PAYMENT_STATUS_FAILED
+                        }
+                    }
+                ]
             },
             "deep": {
                 "tickets": {
@@ -62,7 +72,9 @@ export async function getDetailPool(req, res, services, exceptions, database) {
             });
             ticketType.ticket_remain = ticketType.total_ticket - totalTicketQuantity;
         });
-        res.json(pool);
+        res.status(200).json({
+            data: pool
+        });
     } catch (error) {
         if (!error.status) {
             error.status = 503

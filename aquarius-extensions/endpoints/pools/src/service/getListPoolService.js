@@ -1,13 +1,13 @@
+const PAYMENT_STATUS_FAILED = '23'
 
-
-export async function getListPool (req, res, services, exceptions, database){
+export async function getListPool(req, res, services, exceptions, database) {
     const {
-		ItemsService
-	} = services;
-	const {
-		ServiceUnavailableException,
-		InvalidQueryException
-	} = exceptions;
+        ItemsService
+    } = services;
+    const {
+        ServiceUnavailableException,
+        InvalidQueryException
+    } = exceptions;
     console.log(database);
     try {
         let page = req.query.page;
@@ -107,9 +107,18 @@ export async function getListPool (req, res, services, exceptions, database){
             });
             const orders = await orderService.readByQuery({
                 "filter": {
-                    "pool_id": {
-                        "_eq": pool.id
-                    }
+                    _and: [{
+                            "pool_id": {
+                                "_eq": pool.id
+                            }
+                        },
+                        {
+                            "order_status": {
+                                "_neq": PAYMENT_STATUS_FAILED
+                            }
+                        }
+                    ]
+
                 },
                 "deep": {
                     "tickets": {
