@@ -5694,61 +5694,191 @@ var moment$1 = {exports: {}};
 var momentExports = moment$1.exports;
 var moment = /*@__PURE__*/getDefaultExportFromCjs(momentExports);
 
+const PAYMENT_STATUS = {
+    SUCCESS: {
+        code: "00",
+        message: "Giao dịch thành công"
+    },
+    ERROR: {
+        code: "01",
+        message: "Giao dịch chưa hoàn tất"
+    },
+    PENDING: {
+        code: "02",
+        message: "Giao dịch bị lỗi"
+    },
+    INVALID_REQUEST: {
+        code: "04",
+        message: "Giao dịch ảo (Khách hàng đã bị trừ tiền tại Ngân hàng nhưng GD chưa thành công ở VNPAY)"
+    },
+    PROCESSING: {
+        code: "05",
+        message: "VNPAY đang xử lý giao dịch này (GD hoàn tiền)"
+    },
+    REQUEST_SENT: {
+        code: "06",
+        message: "VNPAY đã gửi yêu cầu hoàn tiền sang Ngân hàng (GD hoàn tiền)"
+    },
+    SUSPECTED_FRAUD: {
+        code: "07",
+        message: "Giao dịch bị nghi ngờ gian lận"
+    },
+    REJECTED_REFUND: {
+        code: "09",
+        message: "GD Hoàn trả bị từ chối"
+    },
+    UNREGISTERED_SERVICE: {
+        code: "10",
+        message: "Giao dịch không thành công do: Thẻ/Tài khoản của khách hàng chưa đăng ký dịch vụ InternetBanking tại ngân hàng."
+    },
+    INCORRECT_INFO_THREE_ATTEMPTS: {
+        code: "11",
+        message: "Giao dịch không thành công do: Khách hàng xác thực thông tin thẻ/tài khoản không đúng quá 3 lần"
+    },
+    EXPIRED_PAYMENT_WAIT: {
+        code: "12",
+        message: "Giao dịch không thành công do: Đã hết hạn chờ thanh toán. Xin quý khách vui lòng thực hiện lại giao dịch."
+    },
+    ACCOUNT_LOCKED: {
+        code: "13",
+        message: "Giao dịch không thành công do: Thẻ/Tài khoản của khách hàng bị khóa."
+    },
+    TRANSACTION_CANCELLED: {
+        code: "24",
+        message: "Giao dịch không thành công do: Khách hàng hủy giao dịch"
+    },
+    INSUFFICIENT_FUNDS: {
+        code: "51",
+        message: "Giao dịch không thành công do: Tài khoản của quý khách không đủ số dư để thực hiện giao dịch."
+    },
+    EXCEEDED_DAILY_TRANSACTION_LIMIT: {
+        code: "65",
+        message: "Giao dịch không thành công do: Tài khoản của Quý khách đã vượt quá hạn mức giao dịch trong ngày."
+    },
+    BANK_UNDER_MAINTENANCE: {
+        code: "75",
+        message: "Ngân hàng thanh toán đang bảo trì."
+    },
+    INCORRECT_PASSWORD_ATTEMPTS_LIMIT: {
+        code: "79",
+        message: "Giao dịch không thành công do: KH nhập sai mật khẩu thanh toán quá số lần quy định. Xin quý khách vui lòng thực hiện lại giao dịch"
+    },
+    OTHER_ERRORS: {
+        code: "99",
+        message: "Các lỗi khác (lỗi còn lại, không có trong danh sách mã lỗi đã liệt kê)"
+    }
+};
+
+var paymentStatus = {
+    PAYMENT_STATUS
+};
+
 // const request = require('request');
 
-async function createPaymentUrlService (req, res, services, exceptions, database, env){
+const PENDING_PAYMENT_STATUS = '05';
+
+async function createPaymentUrlService(req, res, services, exceptions, database, env) {
+    const {
+        ItemsService
+    } = services;
+    const {
+        ServiceUnavailableException,
+        InvalidQueryException
+    } = exceptions;
     try {
-    process.env.TZ = 'Asia/Ho_Chi_Minh';
-    
-    let date = new Date();
-    let createDate = moment(date).format('YYYYMMDDHHmmss');
-    
-    let ipAddr = req.headers['x-forwarded-for'] ||
-        req.connection.remoteAddress ||
-        req.socket.remoteAddress ||
-        req.connection.socket.remoteAddress;
-    
-    let tmnCode = env['vnp_TmnCode'];
-    let secretKey = env['vnp_HashSecret'];
-    let vnpUrl = env['vnp_Url'];
-    let returnUrl = env['vnp_ReturnUrl'];
-    let orderId = moment(date).format('DDHHmmss');
-    let amount = req.query.amount;
-    let bankCode = req.query.bankCode;
-    
-    let locale = req.query.language;
-    if(locale === null || locale === ''){
-        locale = 'vn';
-    }
-    let currCode = 'VND';
-    let vnp_Params = {};
-    vnp_Params['vnp_Version'] = '2.1.0';
-    vnp_Params['vnp_Command'] = 'pay';
-    vnp_Params['vnp_TmnCode'] = tmnCode;
-    vnp_Params['vnp_Locale'] = locale;
-    vnp_Params['vnp_CurrCode'] = currCode;
-    vnp_Params['vnp_TxnRef'] = orderId;
-    vnp_Params['vnp_OrderInfo'] = 'Thanh toan cho ma GD:' + orderId;
-    vnp_Params['vnp_OrderType'] = 'other';
-    vnp_Params['vnp_Amount'] = amount * 100;
-    vnp_Params['vnp_ReturnUrl'] = returnUrl;
-    vnp_Params['vnp_IpAddr'] = ipAddr;
-    vnp_Params['vnp_CreateDate'] = createDate;
-    if(bankCode && bankCode !== ''){
-        vnp_Params['vnp_BankCode'] = bankCode;
-    }
+        process.env.TZ = 'Asia/Ho_Chi_Minh';
 
-    vnp_Params = sortObject$1(vnp_Params);
+        let date = new Date();
+        let createDate = moment(date).format('YYYYMMDDHHmmss');
 
-    let querystring = require('qs');
-    let signData = querystring.stringify(vnp_Params, { encode: false });
-    let crypto = require("crypto");     
-    let hmac = crypto.createHmac("sha512", secretKey);
-    let signed = hmac.update(new Buffer(signData, 'utf-8')).digest("hex"); 
-    vnp_Params['vnp_SecureHash'] = signed;
-    vnpUrl += '?' + querystring.stringify(vnp_Params, { encode: false });
-    console.log(vnpUrl);
-    res.redirect(vnpUrl);
+        let ipAddr = req.headers['x-forwarded-for'] ||
+            req.connection.remoteAddress ||
+            req.socket.remoteAddress ||
+            req.connection.socket.remoteAddress;
+
+        let tmnCode = env['vnp_TmnCode'];
+        let secretKey = env['vnp_HashSecret'];
+        let vnpUrl = env['vnp_Url'];
+        let returnUrl = env['vnp_ReturnUrl'];
+        let orderId = req.query.order_id;
+        let amount = req.query.amount;
+        let bankCode = req.query.bank_code;
+        if (!orderId || !amount) {
+            console.log("Missing request");
+            throw new InvalidQueryException("Missing request");
+        }
+        const orderService = new ItemsService('order', {
+            accountability: req.accountability,
+            schema: req.schema
+        });
+        const order = await orderService.readOne(orderId, {
+            fields: ["*"]
+        });
+        if (!order) {
+            console.log("Order not exist");
+            throw new InvalidQueryException("Order not exist");
+        }
+        if (order.total_amount != amount) {
+            console.log("Total amount not match");
+            throw new InvalidQueryException("Total amount not match");
+        }
+        let locale = req.query.language;
+        if (!locale || locale === null || locale === '') {
+            locale = 'vn';
+        }
+        let currCode = 'VND';
+        let vnp_Params = {};
+
+        vnp_Params['vnp_Version'] = '2.1.0';
+        vnp_Params['vnp_Command'] = 'pay';
+        vnp_Params['vnp_TmnCode'] = tmnCode;
+        vnp_Params['vnp_Locale'] = locale;
+        vnp_Params['vnp_CurrCode'] = currCode;
+        vnp_Params['vnp_TxnRef'] = moment(date).format('YYYYMMDDHHmmss');
+        vnp_Params['vnp_OrderInfo'] = 'Thanh toan cho ma GD:' + orderId;
+        vnp_Params['vnp_OrderType'] = 'other';
+        vnp_Params['vnp_Amount'] = amount * 100;
+        vnp_Params['vnp_ReturnUrl'] = returnUrl;
+        vnp_Params['vnp_IpAddr'] = ipAddr;
+        vnp_Params['vnp_CreateDate'] = createDate;
+        let paymentObject = {
+            "order_id": orderId,
+            "payment_date": new Date(),
+            "amount_paid": amount * 100,
+            "payment_status": PENDING_PAYMENT_STATUS,
+            "vnp_TxnRef": vnp_Params['vnp_TxnRef']
+        };
+        if (bankCode && bankCode !== '') {
+            vnp_Params['vnp_BankCode'] = bankCode;
+            paymentObject.vnp_BankCode = bankCode;
+        }
+
+        vnp_Params = sortObject$2(vnp_Params);
+
+        let querystring = require('qs');
+        let signData = querystring.stringify(vnp_Params, {
+            encode: false
+        });
+        let crypto = require("crypto");
+        let hmac = crypto.createHmac("sha512", secretKey);
+        let signed = hmac.update(new Buffer(signData, 'utf-8')).digest("hex");
+        vnp_Params['vnp_SecureHash'] = signed;
+        vnpUrl += '?' + querystring.stringify(vnp_Params, {
+            encode: false
+        });
+        console.log(vnpUrl);
+        //save payment to database
+        const paymentseService = new ItemsService('payment', {
+            accountability: req.accountability,
+            schema: req.schema
+        });
+        const payment = await paymentseService.createOne(paymentObject);
+        res.status(200).json({
+            data: {
+                redirectUrl: vnpUrl
+            }
+        });
+        // res.redirect(vnpUrl);
     } catch (error) {
         if (!error.status) {
             error.status = 503;
@@ -5760,50 +5890,213 @@ async function createPaymentUrlService (req, res, services, exceptions, database
         return;
     }
 }
-function sortObject$1(obj) {
-	let sorted = {};
-	let str = [];
-	let key;
-	for (key in obj){
-		if (obj.hasOwnProperty(key)) {
-		str.push(encodeURIComponent(key));
-		}
-	}
-	str.sort();
+
+function sortObject$2(obj) {
+    let sorted = {};
+    let str = [];
+    let key;
+    for (key in obj) {
+        if (obj.hasOwnProperty(key)) {
+            str.push(encodeURIComponent(key));
+        }
+    }
+    str.sort();
     for (key = 0; key < str.length; key++) {
         sorted[str[key]] = encodeURIComponent(obj[str[key]]).replace(/%20/g, "+");
     }
     return sorted;
 }
 
-async function vnpayReturn (req, res, services, exceptions, database, env){
+const ERROR_PAYMENT_STATUS = '23';
+const PROCESSING_STATUS = '02';
+
+async function vnpayReturn(req, res, services, exceptions, database, env) {
+    const {
+        ItemsService
+    } = services;
+    const {
+        ServiceUnavailableException,
+        InvalidQueryException
+    } = exceptions;
     console.log(database);
     try {
-    let vnp_Params = req.query;
-    console.log(vnp_Params);
-    let secureHash = vnp_Params['vnp_SecureHash'];
+        let vnp_Params = req.query;
+        console.log(vnp_Params);
+        let secureHash = vnp_Params['vnp_SecureHash'];
 
-    delete vnp_Params['vnp_SecureHash'];
-    delete vnp_Params['vnp_SecureHashType'];
+        delete vnp_Params['vnp_SecureHash'];
+        delete vnp_Params['vnp_SecureHashType'];
 
-    vnp_Params = sortObject(vnp_Params);
+        vnp_Params = sortObject$1(vnp_Params);
 
-    let tmnCode = env['vnp_TmnCode'];
-    let secretKey = env['vnp_HashSecret'];
+        let tmnCode = env['vnp_TmnCode'];
+        let secretKey = env['vnp_HashSecret'];
 
-    let querystring = require('qs');
-    let signData = querystring.stringify(vnp_Params, { encode: false });
-    let crypto = require("crypto");     
-    let hmac = crypto.createHmac("sha512", secretKey);
-    let signed = hmac.update(new Buffer(signData, 'utf-8')).digest("hex");     
-    
-    if(secureHash === signed){
-        //Kiem tra xem du lieu trong db co hop le hay khong va thong bao ket qua
+        let querystring = require('qs');
+        let signData = querystring.stringify(vnp_Params, {
+            encode: false
+        });
+        let crypto = require("crypto");
+        let hmac = crypto.createHmac("sha512", secretKey);
+        let signed = hmac.update(new Buffer(signData, 'utf-8')).digest("hex");
+        const paymentseService = new ItemsService('payment', {
+            accountability: req.accountability,
+            schema: req.schema
+        });
+        const orderService = new ItemsService('order', {
+            accountability: req.accountability,
+            schema: req.schema
+        });
+        if (secureHash === signed) {
+            const paymentCheck = await paymentseService.readByQuery({
+                fields: ["*"],
+                filter: {
+                    vnp_TxnRef: {
+                        _eq: vnp_Params['vnp_TxnRef'],
+                    },
+                }
+            });
+            if (!paymentCheck || paymentCheck.length === 0) {
+                throw new InvalidQueryException("Invalid request")
+            }
+            const desiredCode = vnp_Params['vnp_ResponseCode'];
+            let desiredStatus;
+            for (const statusKey in paymentStatus.PAYMENT_STATUS) {
+                if (paymentStatus.PAYMENT_STATUS.hasOwnProperty(statusKey) && paymentStatus.PAYMENT_STATUS[statusKey].code === desiredCode) {
+                    desiredStatus = paymentStatus.PAYMENT_STATUS[statusKey];
+                    break;
+                }
+            }
+            let updateObject = {
+                payment_status_code: vnp_Params['vnp_ResponseCode'],
+                payment_status_message: desiredStatus.message,
+                vnp_TransactionNo: vnp_Params['vnp_TransactionNo'],
+                vnp_BankCode: vnp_Params['vnp_BankCode']
+            };
+            let orderObject = {};
+            if (desiredCode === paymentStatus.PAYMENT_STATUS.SUCCESS.code) {
+                updateObject.payment_status = PROCESSING_STATUS;
+                orderObject.order_status = PROCESSING_STATUS;
+            } else {
+                orderObject.order_status = ERROR_PAYMENT_STATUS;
+            }
+            await orderService.updateOne(paymentCheck[0].order_id, orderObject);
+            const payment = await paymentseService.updateOne(paymentCheck[0].id, updateObject);
+            //Kiem tra xem du lieu trong db co hop le hay khong va thong bao ket qua
+            res.cookie('vnp_ResponseCode', JSON.stringify({
+                vnp_TxnRef: vnp_Params['vnp_TxnRef'],
+                code: vnp_Params['vnp_ResponseCode']
+            }), {
+                maxAge: 900000,
+                httpOnly: true
+            });
+            res.status(200).json({
+                code: vnp_Params['vnp_ResponseCode']
+            });
+        } else {
+            const payment = await paymentseService.updateOne(paymentCheck[0].id, {
+                payment_status: paymentStatus.PAYMENT_STATUS.ERROR.code
+            });
+            await orderService.updateOne(paymentCheck[0].order_id, {
 
-        res.json('success', {code: vnp_Params['vnp_ResponseCode']});
-    } else {
-        res.json('success', {code: '97'});
+            });
+            res.cookie('vnp_ResponseCode', JSON.stringify({
+                vnp_TxnRef: vnp_Params['vnp_TxnRef'],
+                code: '97'
+            }), {
+                maxAge: 900000,
+                httpOnly: true
+            });
+            res.status(200).json({
+                code: '97'
+            });
+        }
+    } catch (error) {
+        console.log(error);
+        if (!error.status) {
+            error.status = 503;
+        }
+        res.status(error.status).json({
+            error: error,
+            message: error.message
+        });
+        return;
     }
+}
+function sortObject$1(obj) {
+    let sorted = {};
+    let str = [];
+    let key;
+    for (key in obj) {
+        if (obj.hasOwnProperty(key)) {
+            str.push(encodeURIComponent(key));
+        }
+    }
+    str.sort();
+    for (key = 0; key < str.length; key++) {
+        sorted[str[key]] = encodeURIComponent(obj[str[key]]).replace(/%20/g, "+");
+    }
+    return sorted;
+}
+
+async function vnpayIPN(req, res, services, exceptions, database, env) {
+    console.log(database);
+    try {
+        let vnp_Params = req.query;
+        let secureHash = vnp_Params['vnp_SecureHash'];
+
+        let orderId = vnp_Params['vnp_TxnRef'];
+        let rspCode = vnp_Params['vnp_ResponseCode'];
+
+        delete vnp_Params['vnp_SecureHash'];
+        delete vnp_Params['vnp_SecureHashType'];
+
+        vnp_Params = sortObject(vnp_Params);
+        let secretKey = env['vnp_HashSecret'];
+        let querystring = require('qs');
+        let signData = querystring.stringify(vnp_Params, {
+            encode: false
+        });
+        let crypto = require("crypto");
+        let hmac = crypto.createHmac("sha512", secretKey);
+        let signed = hmac.update(new Buffer(signData, 'utf-8')).digest("hex");
+        console.log("Success");
+        let paymentStatus = '0'; // Giả sử '0' là trạng thái khởi tạo giao dịch, chưa có IPN. Trạng thái này được lưu khi yêu cầu thanh toán chuyển hướng sang Cổng thanh toán VNPAY tại đầu khởi tạo đơn hàng.
+        //let paymentStatus = '1'; // Giả sử '1' là trạng thái thành công bạn cập nhật sau IPN được gọi và trả kết quả về nó
+        //let paymentStatus = '2'; // Giả sử '2' là trạng thái thất bại bạn cập nhật sau IPN được gọi và trả kết quả về nó
+
+        let checkOrderId = true; // Mã đơn hàng "giá trị của vnp_TxnRef" VNPAY phản hồi tồn tại trong CSDL của bạn
+        let checkAmount = true; // Kiểm tra số tiền "giá trị của vnp_Amout/100" trùng khớp với số tiền của đơn hàng trong CSDL của bạn
+        if (secureHash === signed) { //kiểm tra checksum
+            if (checkOrderId) {
+                if (checkAmount) {
+                    if (paymentStatus == "0") { //kiểm tra tình trạng giao dịch trước khi cập nhật tình trạng thanh toán
+                        if (rspCode == "00") {
+                            //thanh cong
+                            //paymentStatus = '1'
+                            // Ở đây cập nhật trạng thái giao dịch thanh toán thành công vào CSDL của bạn
+                            res.status(200).json({
+                                RspCode: '00',
+                                Message: 'Success'
+                            });
+                        } else {
+                            //that bai
+                            //paymentStatus = '2'
+                            // Ở đây cập nhật trạng thái giao dịch thanh toán thất bại vào CSDL của bạn
+                            res.status(200).json({
+                                RspCode: '00',
+                                Message: 'Success'
+                            });
+                        }
+                    }
+                }
+            }
+        } else {
+            res.status(200).json({
+                RspCode: '97',
+                Message: 'Checksum failed'
+            });
+        }
     } catch (error) {
         if (!error.status) {
             error.status = 503;
@@ -5816,15 +6109,15 @@ async function vnpayReturn (req, res, services, exceptions, database, env){
     }
 }
 function sortObject(obj) {
-	let sorted = {};
-	let str = [];
-	let key;
-	for (key in obj){
-		if (obj.hasOwnProperty(key)) {
-		str.push(encodeURIComponent(key));
-		}
-	}
-	str.sort();
+    let sorted = {};
+    let str = [];
+    let key;
+    for (key in obj) {
+        if (obj.hasOwnProperty(key)) {
+            str.push(encodeURIComponent(key));
+        }
+    }
+    str.sort();
     for (key = 0; key < str.length; key++) {
         sorted[str[key]] = encodeURIComponent(obj[str[key]]).replace(/%20/g, "+");
     }
@@ -5842,6 +6135,9 @@ var index = (router, {
 	});
 	router.get('/vnpay_return', async (req, res) => {
 		await vnpayReturn(req, res, services, exceptions, database, env);
+	});
+	router.get('/vnpay_ipn', async (req, res) => {
+		await vnpayIPN(req, res, services, exceptions, database, env);
 	});
 };
 

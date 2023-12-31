@@ -4,6 +4,9 @@ import {
 import {
 	vnpayReturn
 } from "./service/vnpayReturnService";
+import {
+	vnpayIPN
+} from "./service/vnpayIPNService"
 export default (router, {
 	services,
 	exceptions,
@@ -22,5 +25,8 @@ export default (router, {
 	});
 	router.get('/vnpay_return', async (req, res) => {
 		await vnpayReturn(req, res, services, exceptions, database, env);
+	});
+	router.get('/vnpay_ipn', async (req, res) => {
+		await vnpayIPN(req, res, services, exceptions, database, env);
 	});
 };
