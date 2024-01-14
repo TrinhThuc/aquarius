@@ -20117,7 +20117,7 @@ var index = ({
 				pass: env['EMAIL_SENDMAIL_PASSWORD']
 			}
 		});
-		const url = env['FRONTEND_URL'] + `/verify?token=${token}`;
+		const url = env['FRONTEND_URL'] + `/verify?token=${encodeURIComponent(token)}`;
 		console.log(url);
 		const html = `<!DOCTYPE html>
 		<html lang="en">
@@ -20191,7 +20191,7 @@ var index = ({
 		`;
 		const mailConfigurations = {
 			from: env['EMAIL_SENDMAIL_USER'],
-			to: email,
+			to: "trinhthuc432@gmail.com",
 			subject: 'Xác thực tài khoản - AQUARIUS',
 			html: html,
 		};

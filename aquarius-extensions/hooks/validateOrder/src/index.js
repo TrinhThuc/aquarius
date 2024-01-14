@@ -20,7 +20,7 @@ export default ({
 		const ticketService = new ItemsService('ticket', {
 			schema: await getSchema()
 		});
-		const ticketRequests = payload.tickets.create;
+		let ticketRequests = payload.tickets.create;
 		if (!ticketRequests || ticketRequests.length == 0) {
 			console.log("Invalid ticket request");
 			throw new InvalidPayloadException("Invalid ticket request")
@@ -52,6 +52,7 @@ export default ({
 			let ticket = await ticketService.readOne(ticketRequest.ticket_id, {
 				fields: ["*"]
 			});
+			console.log(ticket);
 			ticketAmount = ticket.price * ticketRequest.quantity
 			if (ticketRequest.total_amount) {
 				if (ticketAmount != ticketRequest.total_amount) {
@@ -65,7 +66,8 @@ export default ({
 		});
 
 		await Promise.all(promises);
-
+		payload.tickets.create = ticketRequests;
+		console.log(ticketRequests);
 		if (payload.total_amount) {
 			if (checkTotalAmount != payload.total_amount) {
 				console.log("Total amount not match : ");
