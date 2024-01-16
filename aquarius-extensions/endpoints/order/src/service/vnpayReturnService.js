@@ -86,9 +86,9 @@ export async function vnpayReturn(req, res, services, exceptions, database, env)
                 maxAge: 900000,
                 httpOnly: true
             });
-            res.status(200).json({
-                code: vnp_Params['vnp_ResponseCode']
-            })
+            // res.status(200).json({
+            //     code: vnp_Params['vnp_ResponseCode']
+            // })
         } else {
             const payment = await paymentseService.updateOne(paymentCheck[0].id, {
                 payment_status: PAYMENT_STATUS.ERROR.code
@@ -103,10 +103,11 @@ export async function vnpayReturn(req, res, services, exceptions, database, env)
                 maxAge: 900000,
                 httpOnly: true
             });
-            res.status(200).json({
-                code: '97'
-            })
+            // res.status(200).json({
+            //     code: '97'
+            // });
         }
+        res.redirect(env['FRONTEND_REDIRECT_PAYMENT_URL']);
     } catch (error) {
         console.log(error);
         if (!error.status) {

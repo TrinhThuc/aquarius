@@ -158,16 +158,19 @@ export async function getListPool(req, res, services, exceptions, database) {
             return pool; // Return the modified pool object
         });
         // Use Promise.all to wait for all promises to resolve
-        const updatedPools = await Promise.all(poolPromises);
-        const filteredPools = updatedPools.filter(pool => {
-            const serviceArr = serviceRequest.split(",");
-            var check = serviceArr.every(function (serviceReq) {
-                return pool.services.some(function (service) {
-                    return checkService(service, serviceReq);
+        let updatedPools = await Promise.all(poolPromises);
+        let filteredPools = updatedPools;
+        if (serviceRequest) {
+            filteredPools = updatedPools.filter(pool => {
+                const serviceArr = serviceRequest.split(",");
+                var check = serviceArr.every(function (serviceReq) {
+                    return pool.services.some(function (service) {
+                        return checkService(service, serviceReq);
+                    });
                 });
+                return check && pool.ticket_available > 0;
             });
-            return check && pool.ticket_available > 0;
-        });
+        }
         res.json({
             "data": filteredPools,
             "total": total
