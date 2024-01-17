@@ -126,7 +126,7 @@ export default ({
 		`
 		const mailConfigurations = {
 			from: env['EMAIL_SENDMAIL_USER'],
-			to: "trinhthuc432@gmail.com",
+			to: email,
 			subject: 'Xác thực tài khoản - AQUARIUS',
 			html: html,
 		};
