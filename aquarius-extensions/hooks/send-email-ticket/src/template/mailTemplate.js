@@ -152,7 +152,7 @@ const TICKET_TEMPLATE = `
     <td>$numerical_order</td>
     <td>$ticket_description</td>
     <td>$price</td>
-    <td>$price</td>
+    <td>$total_price</td>
 </tr>`
 
 const replaceTicketTemplate = (data) => {
@@ -161,6 +161,7 @@ const replaceTicketTemplate = (data) => {
     replacedTemplate = replacedTemplate.replace('$numerical_order', data.numerical_order);
     replacedTemplate = replacedTemplate.replace('$ticket_description', data.ticket_description);
     replacedTemplate = replacedTemplate.replaceAll('$price', data.price);
+    replacedTemplate = replacedTemplate.replaceAll('$total_price', data.total_price);
     return replacedTemplate;
 };
 

@@ -19739,7 +19739,7 @@ const TICKET_TEMPLATE = `
     <td>$numerical_order</td>
     <td>$ticket_description</td>
     <td>$price</td>
-    <td>$price</td>
+    <td>$total_price</td>
 </tr>`;
 
 const replaceTicketTemplate = (data) => {
@@ -19748,6 +19748,7 @@ const replaceTicketTemplate = (data) => {
     replacedTemplate = replacedTemplate.replace('$numerical_order', data.numerical_order);
     replacedTemplate = replacedTemplate.replace('$ticket_description', data.ticket_description);
     replacedTemplate = replacedTemplate.replaceAll('$price', data.price);
+    replacedTemplate = replacedTemplate.replaceAll('$total_price', data.total_price);
     return replacedTemplate;
 };
 
@@ -19840,9 +19841,10 @@ var index = ({
 					let ticket_description = `${ticket.ticket_id.ticket_name} tại ${payment.order_id.pool_id.name} có hạn sử dụng trong ngày ${ticket.date_available}`;
 					let ticketObject = {
 						ticket_name: ticket.ticket_id.ticket_name,
-						numerical_order: index + 1,
+						numerical_order: ticket.quantity,
 						ticket_description: ticket_description,
-						price: formatAmount(ticket.ticket_id.price)
+						price: formatAmount(ticket.ticket_id.price),
+						total_price: formatAmount(ticket.ticket_id.price * ticket.quantity)
 					};
 					let ticketTemplate = mailTemplate.replaceTicketTemplate(ticketObject);
 					tickets_detail += ticketTemplate;
