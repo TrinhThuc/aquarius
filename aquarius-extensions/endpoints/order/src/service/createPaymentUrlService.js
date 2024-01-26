@@ -71,7 +71,7 @@ export async function createPaymentUrlService(req, res, services, exceptions, da
         let paymentObject = {
             "order_id": orderId,
             "payment_date": new Date(),
-            "amount_paid": amount * 100,
+            "amount_paid": amount,
             "payment_status": PENDING_PAYMENT_STATUS,
             "vnp_TxnRef": vnp_Params['vnp_TxnRef']
         };
