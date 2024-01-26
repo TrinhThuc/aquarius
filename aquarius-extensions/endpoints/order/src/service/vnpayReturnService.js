@@ -43,9 +43,14 @@ export async function vnpayReturn(req, res, services, exceptions, database, env)
             accountability: req.accountability,
             schema: req.schema
         });
+        let na;
+        let nc;
+        let date;
+        let result;
+        let pool_id;
         if (secureHash === signed) {
             const paymentCheck = await paymentseService.readByQuery({
-                fields: ["*"],
+                fields: ["*", "order_id.*", "order_id.tickets.*"],
                 filter: {
                     vnp_TxnRef: {
                         _eq: vnp_Params['vnp_TxnRef'],
@@ -55,6 +60,12 @@ export async function vnpayReturn(req, res, services, exceptions, database, env)
             if (!paymentCheck || paymentCheck.length === 0) {
                 throw new InvalidQueryException("Invalid request")
             }
+            console.log(paymentCheck);
+            const order = paymentCheck[0].order_id;
+            na = order.tickets[0].quantity;
+            nc = order.tickets[1] ? order.tickets[1].quantity : 0;
+            date = order.tickets[0].date_available;
+            pool_id = order.pool_id;
             const desiredCode = vnp_Params['vnp_ResponseCode'];
             let desiredStatus;
             for (const statusKey in PAYMENT_STATUS) {
@@ -69,14 +80,18 @@ export async function vnpayReturn(req, res, services, exceptions, database, env)
                 vnp_TransactionNo: vnp_Params['vnp_TransactionNo'],
                 vnp_BankCode: vnp_Params['vnp_BankCode']
             }
-            let orderObject = {}
+            let orderObject = {};
             if (desiredCode === PAYMENT_STATUS.SUCCESS.code) {
                 updateObject.payment_status = PROCESSING_STATUS;
                 orderObject.order_status = PROCESSING_STATUS;
+                result = 'success';
             } else {
                 orderObject.order_status = ERROR_PAYMENT_STATUS;
+                result = 'failed';
             }
-            await orderService.updateOne(paymentCheck[0].order_id, orderObject);
+
+            await orderService.updateOne(paymentCheck[0].order_id.id, orderObject);
+            console.log("Update status " + paymentCheck[0].id);
             const payment = await paymentseService.updateOne(paymentCheck[0].id, updateObject);
             //Kiem tra xem du lieu trong db co hop le hay khong va thong bao ket qua
             res.cookie('vnp_ResponseCode', JSON.stringify({
@@ -93,9 +108,11 @@ export async function vnpayReturn(req, res, services, exceptions, database, env)
             const payment = await paymentseService.updateOne(paymentCheck[0].id, {
                 payment_status: PAYMENT_STATUS.ERROR.code
             });
-            await orderService.updateOne(paymentCheck[0].order_id, {
-
-            });
+            let orderObject = {};
+            orderObject.order_status = ERROR_PAYMENT_STATUS;
+            result = 'failed';
+            console.log("Update status failed");
+            await orderService.updateOne(paymentCheck[0].order_id, orderObject);
             res.cookie('vnp_ResponseCode', JSON.stringify({
                 vnp_TxnRef: vnp_Params['vnp_TxnRef'],
                 code: '97'
@@ -107,7 +124,8 @@ export async function vnpayReturn(req, res, services, exceptions, database, env)
             //     code: '97'
             // });
         }
-        res.redirect(env['FRONTEND_REDIRECT_PAYMENT_URL']);
+
+        res.redirect(env['FRONTEND_REDIRECT_PAYMENT_URL'] + `/thanhtoan?na=${na}&nc=${nc}&p_id=${pool_id}&date=${date}&result=${result}`);
     } catch (error) {
         console.log(error);
         if (!error.status) {
