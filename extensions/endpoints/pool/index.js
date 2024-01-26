@@ -216,7 +216,7 @@ async function getDetailPool(req, res, services, exceptions, database) {
                     "_eq": id
                 }
             },
-            "fields": ["*", "images.*", "pools.*", "services.service_id.*", "tickets.*", "pools.*", "pools.images.*"]
+            "fields": ["*", "images.*", "pools.*", "services.service_id.*", "tickets.*", "pools.images.*", "reviews.*"]
         });
         if (poolResult.length == 0) {
             throw new InvalidQueryException("Don't exist this pool")
